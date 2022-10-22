@@ -3,7 +3,6 @@ import json
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
-from winreg import SetValue
 
 # Welcome Screen
 def main_screen():
@@ -62,6 +61,7 @@ def register_user():
     password_info  = input_password.get()
 
     username_length = len(username_info)
+    password_length = len(password_info)
 
     special_characters = "!@#$%^&*()-+?_=,<>/ "
 
@@ -72,7 +72,7 @@ def register_user():
         dict = {username_info: password_info}
         if username_info in r.keys():
             messagebox.showerror('Error', 'Username Already Exists!')
-        elif (username_length > 20):
+        elif (username_length > 20 or password_length > 20):
             messagebox.showerror('Error', '20 Characters Limit Exceeded!')
         elif any(c in special_characters for c in username_info):
             messagebox.showerror('Error', 'Special Characters Cant Be Used!')
@@ -223,17 +223,36 @@ def login_verify():
 
     if username_info_login in r.keys() and password_info_login==r[username_info_login]:
         login_screen.destroy()
-        modes() #Leads to another screen
+        connect() #Leads to another screen
     else:
         messagebox.showerror('Error', 'Login Unsuccessful')
+
+def connect():
+    global connect_screen
+    connect_screen = Toplevel(welcome_screen)
+    connect_screen.geometry("400x300+500+250")
+    connect_screen.title("Modes")
+
+    Label(connect_screen, text = "Please click the button to connect", bg="grey", width="300", height = "2", font = ("Calibri", 13)).pack()
+
+    Label(connect_screen, text = "").pack()
+
+    Button(connect_screen, text = "Connect", width="30", height = "2", command = connect_destroy).pack()
+
+def connect_destroy():
+    messagebox.showinfo('Success', 'You have been successfully connected!')
+    connect_screen.destroy()
+    modes()
+
 
 # Modes
 def modes():
     global modes_screen
     modes_screen = Toplevel(welcome_screen)
-    modes_screen.geometry("400x300+500+250")
+    modes_screen.geometry("400x350+500+250")
     modes_screen.title("Modes")
 
+    
 
     Label(modes_screen, text = "Please choose one of the following modes", bg="grey", width="300", height = "2", font = ("Calibri", 13)).pack()
 
@@ -253,6 +272,9 @@ def modes():
 
     Button(modes_screen, text = "AAI", width="30", height = "2", command = aai).pack()
 
+    Label(modes_screen, text = "").pack()
+
+    Label(modes_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
 
 ##############################################################################################################################################################################################
 def voo():
@@ -260,7 +282,7 @@ def voo():
 
     global voo_screen
     voo_screen = Toplevel(welcome_screen)
-    voo_screen.geometry("400x600+500+100")
+    voo_screen.geometry("400x470+500+100")
     voo_screen.title("VOO")
 
     global url_voo
@@ -339,13 +361,14 @@ def voo():
     Button(voo_screen, text = "Load", width="5", height = "1", command = access_val).pack()
     Label(voo_screen, text = "").pack()
     Button(voo_screen, text = "Back", width="5", height = "1", command = destroy_voo).pack()
+    Label(voo_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
 ##############################################################################################################################################################################################
 def aoo():
     modes_screen.destroy()
 
     global aoo_screen
     aoo_screen = Toplevel(welcome_screen)
-    aoo_screen.geometry("400x600+500+100")
+    aoo_screen.geometry("400x470+500+100")
     aoo_screen.title("AOO")
 
     global url_aoo
@@ -424,13 +447,14 @@ def aoo():
     Button(aoo_screen, text = "Load", width="5", height = "1", command = access_val).pack()
     Label(aoo_screen, text = "").pack()
     Button(aoo_screen, text = "Back", width="5", height = "1", command = destroy_aoo).pack()
+    Label(aoo_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
 ##############################################################################################################################################################################################
 def vvi():
     modes_screen.destroy()
 
     global vvi_screen
     vvi_screen = Toplevel(welcome_screen)
-    vvi_screen.geometry("400x750+500+20")
+    vvi_screen.geometry("400x752+500+20")
     vvi_screen.title("VVI")
 
     global url_vvi
@@ -555,13 +579,14 @@ def vvi():
     Button(vvi_screen, text = "Load", width="5", height = "1", command = access_val).pack()
     Label(vvi_screen, text = "").pack()
     Button(vvi_screen, text = "Back", width="5", height = "1", command = destroy_vvi).pack()
+    Label(vvi_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
 ##############################################################################################################################################################################################
 def aai():
     modes_screen.destroy()
 
     global aai_screen
     aai_screen = Toplevel(welcome_screen)
-    aai_screen.geometry("400x760+500+10")
+    aai_screen.geometry("400x764+500+5")
     aai_screen.title("AAI")
 
     global lrl_aai
@@ -578,7 +603,6 @@ def aai():
     modeSet = 'AAI'
 
     Label(aai_screen, text = "Set the details below", font = ("Calibri", 13)).pack()
-    Label(aai_screen, text = "").pack()
 
     Label(aai_screen, text = "Lower Rate Limit (ppm)").pack()
     options = [
@@ -693,11 +717,12 @@ def aai():
         print("RATE SMOOTHING:", rs_aai.get())
         print("-------------------------------------------------------------------")
 
-    Button(aai_screen, text = "Save", width="5", height = "1", command = show).place(x=70, y=719)
+    Button(aai_screen, text = "Save", width="5", height = "1", command = show).place(x=70, y=700)
     Label(aai_screen, text = "").pack()
     Button(aai_screen, text = "Load", width="5", height = "1", command = access_val).pack()
     Label(aai_screen, text = "").pack()
-    Button(aai_screen, text = "Back", width="5", height = "1", command = destroy_aai).place(x=280, y=719)
+    Button(aai_screen, text = "Back", width="5", height = "1", command = destroy_aai).place(x=280, y=700)
+    Label(aai_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
 
 def destroy_voo():
     voo_screen.destroy()
@@ -809,6 +834,7 @@ def access_val():
             if i["username"] == username_info_login:
                 if i["VOO"]["LRL"] == "":
                     print("No previous parameters saved")
+                    print("USER:", username_info_login)
                 else:
                     VOO_LRL = i["VOO"]["LRL"]
                     VOO_URL = i["VOO"]["URL"]
@@ -828,6 +854,7 @@ def access_val():
             if i["username"] == username_info_login:
                 if i["AOO"]["LRL"] == "":
                     print("No previous parameters saved")
+                    print("USER:", username_info_login)
                 else:
                     AOO_LRL = i["AOO"]["LRL"]
                     AOO_URL = i["AOO"]["URL"]
@@ -847,6 +874,7 @@ def access_val():
             if i["username"] == username_info_login:
                 if i["VVI"]["LRL"] == "":
                     print("No previous parameters saved")
+                    print("USER:", username_info_login)
                 else:
                     VVI_LRL = i["VVI"]["LRL"]
                     VVI_URL = i["VVI"]["URL"]
@@ -874,6 +902,7 @@ def access_val():
             if i["username"] == username_info_login:
                 if i["AAI"]["LRL"] == "":
                     print("No previous parameters saved")
+                    print("USER:", username_info_login)
                 else:
                     AAI_LRL = i["AAI"]["LRL"]
                     AAI_URL = i["AAI"]["URL"]
