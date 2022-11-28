@@ -1,8 +1,21 @@
+
 import ast
 import json
 from tkinter import *
 from tkinter import messagebox
 from tkinter import ttk
+import serial
+import serial.tools.list_ports
+import struct
+import time
+
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib import style
+from IPython.display import HTML
+
+
+serial_port = "COM10" # COM PORT CHANGE
 
 # Welcome Screen
 def main_screen():
@@ -11,7 +24,9 @@ def main_screen():
     welcome_screen.geometry("400x300+500+250")
     welcome_screen.title("Pacemaker DCM")
 
-    global counter 
+    global counter
+    global egram_req 
+    egram_req = 0
     counter = 0
 
     Label(text = "Welcome", bg="grey", width="300", height = "2", font = ("Calibri", 13)).pack()
@@ -356,9 +371,14 @@ def connect():
     Button(connect_screen, text = "Connect", width="30", height = "2", command = connect_destroy).pack()
 
 def connect_destroy():
-    messagebox.showinfo('Success', 'You have been successfully connected!')
-    connect_screen.destroy()
-    modes()
+    try:
+        ser = serial.Serial(serial_port, 115200)  # COM PORT CHANGE
+        messagebox.showinfo('Success', 'You have been successfully connected!')
+        connect_screen.destroy()
+        modes()
+    except:
+        messagebox.showerror('Error', 'Make sure to connect the pacemaker!')
+        connect_screen.destroy()
 
 # Modes
 def modes():
@@ -394,6 +414,9 @@ def modes():
     
     Button(modes_screen, text = "Logout", width="5", height = "2", command = logout).place(x=420, y=5)
 
+    
+
+
 def logout():
     modes_screen.destroy()
 
@@ -403,7 +426,7 @@ def voo():
 
     global voo_screen
     voo_screen = Toplevel(welcome_screen)
-    voo_screen.geometry("400x470+500+100")
+    voo_screen.geometry("400x500+500+100")
     voo_screen.title("VOO")
 
     global url_voo
@@ -436,9 +459,9 @@ def voo():
 
     Label(voo_screen, text = "Ventricular Amplitude (V)").pack()
     options2 = [
-        "0","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9","2.0",
-        "2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.5","4.0","4.5","5.0","5.5",
-        "6.0","6.5","7.0","7.5",
+        "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6",
+        "1.7","1.8","1.9","2.0","2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.3",
+        "3.4","3.5","3.6","3.7","3.8","3.9","4.0","4.1","4.2","4.3","4.4","4.5","4.6","4.7","4.8","4.9","5.0"
     ]
     choice1 = DoubleVar()
     choice1.set(options2[0])
@@ -450,7 +473,7 @@ def voo():
 
     Label(voo_screen, text = "Ventricular Pulse Width (ms)").pack()
     options3 = [
-        "0.05","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9",
+        "1","2","3","4","5","6","7","8","9","10", "11","12","13","14","15","16","17","18","19","20", "21","22","23","24","25","26","27","28","29","30"
     ]
     choice2 = DoubleVar()
     choice2.set(options3[0])
@@ -461,6 +484,7 @@ def voo():
     Label(voo_screen, text = "").pack()
 
     def show():
+
         global lrl_voo
         global va_voo
         global vpw_voo
@@ -479,19 +503,102 @@ def voo():
             print("VENTRICULAR PULSE WIDTH:", vpw_voo)
             print("-------------------------------------------------------------------")
 
-    Button(voo_screen, text = "Save", width="5", height = "1", command = show).pack()
+            # serial_port = "COM10"
+
+            Start = b'\x16'
+            Fn_set = b'\x55'
+            #test
+            vpw =struct.pack("H", int(vpw_voo))
+            mode = struct.pack("B", 1)
+            lrl = struct.pack("H", int(lrl_voo))
+            url = struct.pack("B", url_voo.get())
+            vamp = struct.pack("f", float(va_voo))
+            aamp = struct.pack("f", 0)
+            apw = struct.pack("H", 0)
+            vrp = struct.pack("H", 0)
+            arp = struct.pack("H", 0)
+            atr_sens = struct.pack("f", 0)
+            vent_sens = struct.pack("f", 0)
+            pvarp = struct.pack("H", 0)
+            rs = struct.pack("B", 0)
+            hs = struct.pack("B", 0)
+            Signal_set = (Start + Fn_set + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs)
+
+            with serial.Serial(serial_port, 115200) as pacemaker:
+                pacemaker.write(Signal_set)
+                time.sleep(0.5)
+    
+    def echo_signal():
+        # serial_port = "COM10"
+
+        Start = b'\x16'
+        SYNC = b'\x22'
+        vpw =struct.pack("H", int(vpw_voo))
+        mode = struct.pack("B", 1)
+        lrl = struct.pack("H", int(lrl_voo))
+        url = struct.pack("B", url_voo.get())
+        vamp = struct.pack("f", float(va_voo))
+        aamp = struct.pack("f", 0)
+        apw = struct.pack("H", 0)
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", 0)
+        hs = struct.pack("B", 0)
+
+        Signal_echo = Start + SYNC + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs
+
+        with serial.Serial(serial_port, 115200) as pacemaker:
+            pacemaker.write(Signal_echo)
+            data = pacemaker.read(32)
+            time.sleep(0.5)
+            vpw_rev =  struct.unpack("H", data[0:2])[0]
+            lrl_rev = struct.unpack("H", data[2:4])[0]
+            mode_rev = data[4]
+            url_rev = data[5]
+            vamp_rev = struct.unpack("f", data[6:10])[0]
+            aamp_rev = struct.unpack("f", data[10:14])[0]
+            apw_rev = struct.unpack("H", data[14:16])[0]
+            vrp_rev =  struct.unpack("H", data[16:18])[0]
+            arp_rev =  struct.unpack("H", data[18:20])[0]
+            atrsens_rev =  struct.unpack("f", data[20:24])[0]
+            ventsens_rev =  struct.unpack("f", data[24:28])[0]
+            PVARP_rev =  struct.unpack("H", data[28:30])[0]
+            rs_rev =  data[30]
+            hs_rev =  data[31]
+
+            time.sleep(0.5)
+            print("From the board (VOO):")
+            print("MODE = ", mode_rev)
+            print("LOWER RATE LIMIT = ", lrl_rev)
+            print("UPPER RATE LIMIT = ",  url_rev)
+            print("VENTRICULAR PULSE WIDTH = ", vpw_rev)
+            print("VENTRICULAR AMPLITUDE = ", vamp_rev)
+
+            serial.time.sleep(0.5)
+
+    Button(voo_screen, text = "SEND", width="5", height = "1", command = show).place(x=70, y=400)
     Label(voo_screen, text = "").pack()
-    Button(voo_screen, text = "Load", width="5", height = "1", command = access_val).pack()
+    Button(voo_screen, text = "LOAD", width="5", height = "1", command = access_val).place(x=175, y=400)
     Label(voo_screen, text = "").pack()
-    Button(voo_screen, text = "Back", width="5", height = "1", command = destroy_voo).pack()
-    Label(voo_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
+    Button(voo_screen, text = "BACK", width="5", height = "1", command = destroy_voo).place(x=280, y=400)
+    Label(voo_screen, text = "").pack()
+    Button(voo_screen, text = "Echo", width="5", height = "1", command = echo_signal).place(x=70, y=440)
+    Label(voo_screen, text = "").pack()
+    Button(voo_screen, text = "EGRAM", width="5", height = "1", command = egram_plot).place(x=175, y=440)
+    Label(voo_screen, text = "").pack()
+    Button(voo_screen, text = "STOP", width="5", height = "1", command = egram_stop).place(x=280, y=440)
+    Label(voo_screen, text = "").pack()
+    Label(voo_screen, text = "Current User Logged In: %s" % (username_info_login)).place(x=12, y=470)
 ##############################################################################################################################################################################################
 def aoo():
     modes_screen.destroy()
 
     global aoo_screen
     aoo_screen = Toplevel(welcome_screen)
-    aoo_screen.geometry("400x470+500+100")
+    aoo_screen.geometry("400x500+500+100")
     aoo_screen.title("AOO")
 
     global url_aoo
@@ -524,9 +631,9 @@ def aoo():
 
     Label(aoo_screen, text = "Atrial Amplitude (V)").pack()
     options1 = [
-        "0","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9","2.0",
-        "2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.5","4.0","4.5","5.0","5.5",
-        "6.0","6.5","7.0","7.5",
+        "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6",
+        "1.7","1.8","1.9","2.0","2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.3",
+        "3.4","3.5","3.6","3.7","3.8","3.9","4.0","4.1","4.2","4.3","4.4","4.5","4.6","4.7","4.8","4.9","5.0"
     ]
     choice1 = DoubleVar()
     choice1.set(options1[0])
@@ -538,7 +645,7 @@ def aoo():
 
     Label(aoo_screen, text = "Atrial Pulse Width (ms)").pack()
     options2 = [
-        "0.05","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9",
+         "1","2","3","4","5","6","7","8","9","10", "11","12","13","14","15","16","17","18","19","20", "21","22","23","24","25","26","27","28","29","30"
     ]
     choice2 = DoubleVar()
     choice2.set(options2[0])
@@ -549,6 +656,7 @@ def aoo():
     Label(aoo_screen, text = "").pack()
 
     def show():
+
         global lrl_aoo
         global aa_aoo
         global apw_aoo
@@ -567,19 +675,101 @@ def aoo():
             print("ATRIAL PULSE WIDTH:", apw_aoo)
             print("-------------------------------------------------------------------")
 
-    Button(aoo_screen, text = "Save", width="5", height = "1", command = show).pack()
+            # serial_port = "COM10"
+
+            Start = b'\x16'
+            Fn_set = b'\x55'
+            #test
+            vpw =struct.pack("H", 0)
+            mode = struct.pack("B", 2)
+            lrl = struct.pack("H", int(lrl_aoo))
+            url = struct.pack("B", url_aoo.get())
+            vamp = struct.pack("f", 0)
+            aamp = struct.pack("f", float(aa_aoo))
+            apw = struct.pack("H", int(apw_aoo))
+            vrp = struct.pack("H", 0)
+            arp = struct.pack("H", 0)
+            atr_sens = struct.pack("f", 0)
+            vent_sens = struct.pack("f", 0)
+            pvarp = struct.pack("H", 0)
+            rs = struct.pack("B", 0)
+            hs = struct.pack("B", 0)
+            Signal_set = (Start + Fn_set + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs)
+
+            with serial.Serial(serial_port, 115200) as pacemaker:
+                pacemaker.write(Signal_set)
+                time.sleep(0.5)
+    def echo_signal():
+        # serial_port = "COM10"
+
+        Start = b'\x16'
+        SYNC = b'\x22'
+        vpw =struct.pack("H", 0)
+        mode = struct.pack("B", 2)
+        lrl = struct.pack("H", int(lrl_aoo))
+        url = struct.pack("B", url_aoo.get())
+        vamp = struct.pack("f", 0)
+        aamp = struct.pack("f", float(aa_aoo))
+        apw = struct.pack("H", int(apw_aoo))
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", 0)
+        hs = struct.pack("B", 0)
+
+        Signal_echo = Start + SYNC + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs
+
+        with serial.Serial(serial_port, 115200) as pacemaker:
+            pacemaker.write(Signal_echo)
+            data = pacemaker.read(32)
+            time.sleep(0.5)
+            vpw_rev =  struct.unpack("H", data[0:2])[0]
+            lrl_rev = struct.unpack("H", data[2:4])[0]
+            mode_rev = data[4]
+            url_rev = data[5]
+            vamp_rev = struct.unpack("f", data[6:10])[0]
+            aamp_rev = struct.unpack("f", data[10:14])[0]
+            apw_rev = struct.unpack("H", data[14:16])[0]
+            vrp_rev =  struct.unpack("H", data[16:18])[0]
+            arp_rev =  struct.unpack("H", data[18:20])[0]
+            atrsens_rev =  struct.unpack("f", data[20:24])[0]
+            ventsens_rev =  struct.unpack("f", data[24:28])[0]
+            PVARP_rev =  struct.unpack("H", data[28:30])[0]
+            rs_rev =  data[30]
+            hs_rev =  data[31]
+
+            time.sleep(0.5)
+            print("From the board (AOO):")
+            print("MODE = ", mode_rev)
+            print("LOWER RATE LIMIT = ", lrl_rev)
+            print("UPPER RATE LIMIT = ",  url_rev)
+            print("ATRIAL PULSE WIDTH = ", apw_rev)
+            print("ATRIAL AMPLITUDE = ", aamp_rev)
+
+            serial.time.sleep(0.5)
+
+    Button(aoo_screen, text = "SEND", width="5", height = "1", command = show).place(x=70, y=400)
     Label(aoo_screen, text = "").pack()
-    Button(aoo_screen, text = "Load", width="5", height = "1", command = access_val).pack()
+    Button(aoo_screen, text = "LOAD", width="5", height = "1", command = access_val).place(x=175, y=400)
     Label(aoo_screen, text = "").pack()
-    Button(aoo_screen, text = "Back", width="5", height = "1", command = destroy_aoo).pack()
-    Label(aoo_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
+    Button(aoo_screen, text = "BACK", width="5", height = "1", command = destroy_aoo).place(x=280, y=400)
+    Label(aoo_screen, text = "").pack()
+    Button(aoo_screen, text = "ECHO", width="5", height = "1", command= echo_signal).place(x=70, y=440)
+    Label(aoo_screen, text = "").pack()
+    Button(aoo_screen, text = "EGRAM", width="5", height = "1", command = egram_plot).place(x=175, y=440)
+    Label(aoo_screen, text = "").pack()
+    Button(aoo_screen, text = "STOP", width="5", height = "1", command = egram_stop).place(x=280, y=440)
+    Label(aoo_screen, text = "").pack()
+    Label(aoo_screen, text = "Current User Logged In: %s" % (username_info_login)).place(x=12, y=470)
 ##############################################################################################################################################################################################
 def vvi():
     modes_screen.destroy()
 
     global vvi_screen
     vvi_screen = Toplevel(welcome_screen)
-    vvi_screen.geometry("400x752+500+20")
+    vvi_screen.geometry("400x500+500+50")
     vvi_screen.title("VVI")
 
     global url_vvi
@@ -592,7 +782,7 @@ def vvi():
     Label(vvi_screen, text = "Set the details below", font = ("Calibri", 13)).pack()
     Label(vvi_screen, text = "").pack()
 
-    Label(vvi_screen, text = "Lower Rate Limit (ppm)").pack()
+    Label(vvi_screen, text = "Lower Rate Limit (ppm)").place(x=15, y=60)
     options = [
         "30","35","40","45","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70",
         "70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89",
@@ -603,60 +793,56 @@ def vvi():
     list = ttk.Combobox(vvi_screen, value= options)
     list.current(14)
     list.bind("<<ComboboxSelected>>")
-    list.pack() 
-    Label(vvi_screen, text = "").pack()
+    list.place(x=10, y=90)
 
-    Label(vvi_screen, text = "Upper Rate Limit (ppm)").pack()
+    Label(vvi_screen, text = "Upper Rate Limit (ppm)").place(x=15, y=135)
     url_vvi = Scale(vvi_screen, from_=50, to =175, resolution=5, orient=HORIZONTAL)
     url_vvi.set(120)
-    url_vvi.pack()
-    Label(vvi_screen, text = "").pack()
+    url_vvi.place(x=15, y=155)
 
-    Label(vvi_screen, text = "Ventricular Amplitude (V)").pack()
+    Label(vvi_screen, text = "Ventricular Amplitude (V)").place(x=12, y=220)
     options1 = [
-        "0","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9","2.0",
-        "2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.5","4.0","4.5","5.0","5.5",
-        "6.0","6.5","7.0","7.5",
+        "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6",
+        "1.7","1.8","1.9","2.0","2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.3",
+        "3.4","3.5","3.6","3.7","3.8","3.9","4.0","4.1","4.2","4.3","4.4","4.5","4.6","4.7","4.8","4.9","5.0"
     ]
     choice1 = DoubleVar()
     choice1.set(options1[0])
     list1 = ttk.Combobox(vvi_screen, value= options1)
     list1.current(29)
     list1.bind("<<ComboboxSelected>>")
-    list1.pack()
-    Label(vvi_screen, text = "").pack()
+    list1.place(x=10, y=250)
 
-    Label(vvi_screen, text = "Ventricular Pulse Width (ms)").pack()
+    Label(vvi_screen, text = "Ventricular Pulse Width (ms)").place(x=12, y=295)
     options2 = [
-        "0.05","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9",
+        "1","2","3","4","5","6","7","8","9","10", "11","12","13","14","15","16","17","18","19","20", "21","22","23","24","25","26","27","28","29","30"
     ]
     choice2 = DoubleVar()
     choice2.set(options2[0])
     list2 = ttk.Combobox(vvi_screen, value= options2)
     list2.current(4)
     list2.bind("<<ComboboxSelected")
-    list2.pack()
-    Label(vvi_screen, text = "").pack()
+    list2.place(x=12, y=325)
 
-    Label(vvi_screen, text = "Ventricular sensitivity (mV)").pack()
+    Label(vvi_screen, text = "Ventricular sensitivity (V)").place(x=220, y=60)
     options3 = [
-        "0.25","0.5","0.75","1.0","1.5","2.0","2.5","3.0","3.5","4.0","4.5","5.0","5.5","6.0","6.5","7.0","7.5","8.0","8.5","9.0","9.5","10.0",
+        "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6",
+        "1.7","1.8","1.9","2.0","2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.3",
+        "3.4","3.5","3.6","3.7","3.8","3.9","4.0","4.1","4.2","4.3","4.4","4.5","4.6","4.7","4.8","4.9","5.0"
     ]
     choice3 = DoubleVar()
     choice3.set(options3[0])
     list3 = ttk.Combobox(vvi_screen, value= options3)
     list3.current(6)
     list3.bind("<<ComboboxSelected>>")
-    list3.pack()
-    Label(vvi_screen, text = "").pack()
+    list3.place(x=220, y=90)
 
-    Label(vvi_screen, text = "Ventricular Refractory Period (ms)").pack()
+    Label(vvi_screen, text = "Ventricular Refractory Period (ms)").place(x=220, y=135)
     vrp_vvi = Scale(vvi_screen, from_=150, to =500, resolution=10, orient=HORIZONTAL)
     vrp_vvi.set(320)
-    vrp_vvi.pack()
-    Label(vvi_screen, text = "").pack()
+    vrp_vvi.place(x=220, y=155)
 
-    Label(vvi_screen, text = "Hysteresis ").pack()
+    Label(vvi_screen, text = "Hysteresis ").place(x=220, y=220)
     options4 = [
         "OFF","same as LRL",
     ]
@@ -665,13 +851,11 @@ def vvi():
     list4 = ttk.Combobox(vvi_screen, value= options4)
     list4.current(0)
     list4.bind("<<ComboboxSelected>>")
-    list4.pack()
-    Label(vvi_screen, text = "").pack()
+    list4.place(x=220, y=250)
 
-    Label(vvi_screen, text = "Rate smoothing").pack()
+    Label(vvi_screen, text = "Rate smoothing").place(x=220, y=295)
     rs_vvi = Scale(vvi_screen, from_=0, to =25, resolution=3.07, orient=HORIZONTAL)
-    rs_vvi.pack()
-    Label(vvi_screen, text = "").pack()
+    rs_vvi.place(x=220, y=315)
 
     def show():
 
@@ -685,7 +869,11 @@ def vvi():
         va_vvi = list1.get()
         vpw_vvi = list2.get()
         vs_vvi = list3.get()
-        hysteresis_vvi = list4.get()
+        if (list4.get() == "OFF"):
+            hysteresis_vvi = 0
+        else:
+            hysteresis_vvi = list.get()
+
         if (int(lrl_vvi) > url_vvi.get()):
             messagebox.showerror('Error', 'LRL is higher than URL')
         elif ((float(60000/int(lrl_vvi)) - float(vpw_vvi)) < float(vrp_vvi.get())):
@@ -693,29 +881,117 @@ def vvi():
         else: 
             set_values()
             print("The values for VVI")
-            print("LOWER RATE LIMIT:", lrl_vvi)
-            print("UPPER RATE LIMIT:", url_vvi.get())
-            print("VENTRICULAR AMPLITUDE:", va_vvi)
-            print("VENTRICULAR PULSE WIDTH:", vpw_vvi)
-            print("VENTRICULAR SENSITIVITY:", vs_vvi)
-            print("VENTRICULAR REFRACTORY PERIOD:", vrp_vvi.get())
-            print("HYSTERESIS:", hysteresis_vvi)
-            print("RATE SMOOTHING:", rs_vvi.get())
+            print("LOWER RATE LIMIT:", lrl_vvi) 
+            print("UPPER RATE LIMIT:", url_vvi.get()) 
+            print("VENTRICULAR AMPLITUDE:", va_vvi) 
+            print("VENTRICULAR PULSE WIDTH:", vpw_vvi) 
+            print("VENTRICULAR SENSITIVITY:", vs_vvi) 
+            print("VENTRICULAR REFRACTORY PERIOD:", vrp_vvi.get()) 
+            print("HYSTERESIS:", hysteresis_vvi) 
+            print("RATE SMOOTHING:", rs_vvi.get()) 
             print("-------------------------------------------------------------------")
 
-    Button(vvi_screen, text = "Save", width="5", height = "1", command = show).pack()
+            # serial_port = "COM10"
+
+            Start = b'\x16'
+            Fn_set = b'\x55'
+            #test
+            vpw =struct.pack("H", int(vpw_vvi))
+            mode = struct.pack("B", 3)
+            lrl = struct.pack("H", int(lrl_vvi))
+            url = struct.pack("B", url_vvi.get())
+            vamp = struct.pack("f", float(va_vvi))
+            aamp = struct.pack("f", 0)
+            apw = struct.pack("H", 0)
+            vrp = struct.pack("H", vrp_vvi.get())
+            arp = struct.pack("H", 0)
+            atr_sens = struct.pack("f", 0)
+            vent_sens = struct.pack("f", float(vs_vvi))
+            pvarp = struct.pack("H", 0)
+            rs = struct.pack("B", rs_vvi.get())
+            hs = struct.pack("B", int(hysteresis_vvi)) 
+            Signal_set = (Start + Fn_set + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs)
+
+            with serial.Serial(serial_port, 115200) as pacemaker:
+                pacemaker.write(Signal_set)
+                time.sleep(0.5)
+
+    def echo_signal():
+        # serial_port = "COM10"
+
+        Start = b'\x16'
+        SYNC = b'\x22'
+        vpw =struct.pack("H", int(vpw_vvi))
+        mode = struct.pack("B", 3)
+        lrl = struct.pack("H", int(lrl_vvi))
+        url = struct.pack("B", url_vvi.get())
+        vamp = struct.pack("f", float(va_vvi))
+        aamp = struct.pack("f", 0)
+        apw = struct.pack("H", 0)
+        vrp = struct.pack("H", vrp_vvi.get())
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", float(vs_vvi))
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", rs_vvi.get())
+        hs = struct.pack("B", int(hysteresis_vvi))
+
+        Signal_echo = Start + SYNC + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs
+
+        with serial.Serial(serial_port, 115200) as pacemaker:
+            pacemaker.write(Signal_echo)
+            data = pacemaker.read(32)
+            time.sleep(0.5)
+            vpw_rev =  struct.unpack("H", data[0:2])[0]
+            lrl_rev = struct.unpack("H", data[2:4])[0]
+            mode_rev = data[4]
+            url_rev = data[5]
+            vamp_rev = struct.unpack("f", data[6:10])[0]
+            aamp_rev = struct.unpack("f", data[10:14])[0]
+            apw_rev = struct.unpack("H", data[14:16])[0]
+            vrp_rev =  struct.unpack("H", data[16:18])[0]
+            arp_rev =  struct.unpack("H", data[18:20])[0]
+            atrsens_rev =  struct.unpack("f", data[20:24])[0]
+            ventsens_rev =  struct.unpack("f", data[24:28])[0]
+            PVARP_rev =  struct.unpack("H", data[28:30])[0]
+            rs_rev =  data[30]
+            hs_rev =  data[31]
+
+            time.sleep(0.5)
+            print("From the board (VVI):")
+            print("MODE = ", mode_rev)
+            print("LOWER RATE LIMIT = ", lrl_rev)
+            print("UPPER RATE LIMIT = ",  url_rev)
+            print("VENTRICULAR PULSE WIDTH = ", vpw_rev)
+            print("VENTRICULAR AMPLITUDE = ", vamp_rev)
+            print("VENTRICULAR SENSITIVITY:", ventsens_rev) 
+            print("VENTRICULAR REFRACTORY PERIOD:", vrp_rev) 
+            print("HYSTERESIS:", hs_rev) 
+            print("RATE SMOOTHING:", rs_rev)
+            serial.time.sleep(0.5)
+
+
+
+    Button(vvi_screen, text = "Save", width="5", height = "1", command = show).place(x=70, y=400)
     Label(vvi_screen, text = "").pack()
-    Button(vvi_screen, text = "Load", width="5", height = "1", command = access_val).pack()
+    Button(vvi_screen, text = "Load", width="5", height = "1", command = access_val).place(x=175, y=400)
     Label(vvi_screen, text = "").pack()
-    Button(vvi_screen, text = "Back", width="5", height = "1", command = destroy_vvi).pack()
-    Label(vvi_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
+    Button(vvi_screen, text = "Back", width="5", height = "1", command = destroy_vvi).place(x=280, y=400)
+    Label(vvi_screen, text = "").pack()
+    Button(vvi_screen, text = "Echo", width="5", height = "1", command = echo_signal).place(x=70, y=440)
+    Label(vvi_screen, text = "").pack()
+    Button(vvi_screen, text = "EGRAM", width="5", height = "1", command = egram_plot).place(x=175, y=440)
+    Label(vvi_screen, text = "").pack()
+    Button(vvi_screen, text = "STOP", width="5", height = "1", command = egram_stop).place(x=280, y=440)
+    Label(vvi_screen, text = "").pack()
+    Label(vvi_screen, text = "Current User Logged In: %s" % (username_info_login)).place(x=12, y=470)
 ##############################################################################################################################################################################################
 def aai():
     modes_screen.destroy()
 
     global aai_screen
     aai_screen = Toplevel(welcome_screen)
-    aai_screen.geometry("400x764+500+5")
+    aai_screen.geometry("400x500+500+50")
     aai_screen.title("AAI")
 
     global lrl_aai
@@ -733,7 +1009,7 @@ def aai():
 
     Label(aai_screen, text = "Set the details below", font = ("Calibri", 13)).pack()
 
-    Label(aai_screen, text = "Lower Rate Limit (ppm)").pack()
+    Label(aai_screen, text = "Lower Rate Limit (ppm)").place(x=15, y=60)
     options = [
         "30","35","40","45","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70",
         "70","71","72","73","74","75","76","77","78","79","80","81","82","83","84","85","86","87","88","89",
@@ -744,16 +1020,14 @@ def aai():
     list = ttk.Combobox(aai_screen, value= options)
     list.current(14)
     list.bind("<<ComboboxSelected>>")
-    list.pack()
-    Label(aai_screen, text = "").pack()
+    list.place(x=10, y=90)
 
-    Label(aai_screen, text = "Upper Rate Limit (ppm)").pack()
+    Label(aai_screen, text = "Upper Rate Limit (ppm)").place(x=15, y=135)
     url_aai = Scale(aai_screen, from_=50, to =175, resolution=5, orient=HORIZONTAL)
     url_aai.set(120)
-    url_aai.pack()
-    Label(aai_screen, text = "").pack()
+    url_aai.place(x=15, y=155)
 
-    Label(aai_screen, text = "Atrial Amplitude (V)").pack()
+    Label(aai_screen, text = "Atrial Amplitude (V)").place(x=12, y=220)
     options1 = [
         "0","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9","2.0",
         "2.1","2.2","2.3","2.4","2.5","2.6","2.7","2.8","2.9","3.0","3.1","3.2","3.5","4.0","4.5","5.0","5.5",
@@ -764,22 +1038,20 @@ def aai():
     list1 = ttk.Combobox(aai_screen, value= options1)
     list1.current(29)
     list1.bind("<<ComboboxSelected>>")
-    list1.pack()
-    Label(aai_screen, text = "").pack()
+    list1.place(x=10, y=250)
 
-    Label(aai_screen, text = "Atrial Pulse Width (ms)").pack()
+    Label(aai_screen, text = "Atrial Pulse Width (ms)").place(x=12, y=295)
     options2 = [
-        "0.05","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1.0","1.1","1.2","1.3","1.4","1.5","1.6","1.7","1.8","1.9",
+        "1","2","3","4","5","6","7","8","9","10", "11","12","13","14","15","16","17","18","19","20", "21","22","23","24","25","26","27","28","29","30"
     ]
     choice2 = DoubleVar()
     choice2.set(options2[0])
     list2 = ttk.Combobox(aai_screen, value= options2)
     list2.current(4)
     list2.bind("<<ComboboxSelected")
-    list2.pack()
-    Label(aai_screen, text = "").pack()
+    list2.place(x=12, y=325)
 
-    Label(aai_screen, text = "Atrial sensitivity (mV)").pack()
+    Label(aai_screen, text = "Atrial sensitivity (mV)").place(x=12, y=370)
     options3 = [
         "0.25","0.5","0.75","1.0","1.5","2.0","2.5","3.0","3.5","4.0","4.5","5.0","5.5","6.0","6.5","7.0","7.5","8.0","8.5","9.0","9.5","10.0",
     ]
@@ -788,22 +1060,19 @@ def aai():
     list3 = ttk.Combobox(aai_screen, value= options3)
     list3.current(2)
     list3.bind("<<ComboboxSelected>>")
-    list3.pack()
-    Label(aai_screen, text = "").pack()
+    list3.place(x=12, y=400)
 
-    Label(aai_screen, text = "Atrial Refractory Period (ms)").pack()
+    Label(aai_screen, text = "Atrial Refractory Period (ms)").place(x=220, y=60)
     arp_aai = Scale(aai_screen, from_=150, to =500, resolution=10, orient=HORIZONTAL)
     arp_aai.set(250)
-    arp_aai.pack()
-    Label(aai_screen, text = "").pack()
+    arp_aai.place(x=220, y=80)
 
-    Label(aai_screen, text = "Post Ventricular Atrial Refractory Period (ms)").pack()
+    Label(aai_screen, text = "Post Ventricular Atrial Refractory Period (ms)").place(x=220, y=145)
     pvarp_aai = Scale(aai_screen, from_=150, to =500, resolution=10, orient=HORIZONTAL)
     pvarp_aai.set(250)
-    pvarp_aai.pack()
-    Label(aai_screen, text = "").pack()
+    pvarp_aai.place(x=220, y=165)
 
-    Label(aai_screen, text = "Hysteresis ").pack()
+    Label(aai_screen, text = "Hysteresis ").place(x=220, y=230)
     options4 = [
         "OFF","same as LRL",
     ]
@@ -812,15 +1081,14 @@ def aai():
     list4 = ttk.Combobox(aai_screen, value= options4)
     list4.current(0)
     list4.bind("<<ComboboxSelected>>")
-    list4.pack()
-    Label(aai_screen, text = "").pack()
+    list4.place(x=220, y=250)
 
-    Label(aai_screen, text = "Rate smoothing").pack()
+    Label(aai_screen, text = "Rate smoothing").place(x=220, y=295)
     rs_aai = Scale(aai_screen, from_=0, to =25, resolution=3.07, orient=HORIZONTAL)
-    rs_aai.pack()
-    Label(aai_screen, text = "").pack()
+    rs_aai.place(x=220, y=315)
 
     def show():
+
         global lrl_aai
         global aa_aai
         global apw_aai
@@ -831,7 +1099,10 @@ def aai():
         aa_aai = list1.get()
         apw_aai = list2.get()
         as_aai = list3.get()
-        hysteresis_aai = list4.get()
+        if (list4.get() == "OFF"):
+            hysteresis_aai = 0
+        else:
+            hysteresis_aai = list.get()
         if (int(lrl_aai) > url_aai.get()):
             messagebox.showerror('Error', 'LRL is higher than URL')
         elif ((float(60000/int(lrl_aai)) - float(apw_aai)) < float(arp_aai.get())):
@@ -839,23 +1110,111 @@ def aai():
         else: 
             set_values()
             print("The values for AAI")
-            print("LOWER RATE LIMIT:", lrl_aai)
-            print("UPPER RATE LIMIT:", url_aai.get())
-            print("ATRIAL AMPLITUDE:", aa_aai)
-            print("ATRIAL PULSE WIDTH:", apw_aai)
-            print("ATRIAL SENSITIVITY:", as_aai)
-            print("ATRIAL REFRACTORY PERIOD:", arp_aai.get())
-            print("POST VENTRICULAR ATRIAL REFRACTORY PERIOD:", pvarp_aai.get())
+            print("LOWER RATE LIMIT:", lrl_aai) 
+            print("UPPER RATE LIMIT:", url_aai.get()) 
+            print("ATRIAL AMPLITUDE:", aa_aai) 
+            print("ATRIAL PULSE WIDTH:", apw_aai) 
+            print("ATRIAL SENSITIVITY:", as_aai) 
+            print("ATRIAL REFRACTORY PERIOD:", arp_aai.get()) 
+            print("POST VENTRICULAR ATRIAL REFRACTORY PERIOD:", pvarp_aai.get()) 
             print("HYSTERESIS:", hysteresis_aai)
             print("RATE SMOOTHING:", rs_aai.get())
             print("-------------------------------------------------------------------")
+        
+            # serial_port = "COM10"
 
-    Button(aai_screen, text = "Save", width="5", height = "1", command = show).place(x=70, y=700)
+            Start = b'\x16'
+            Fn_set = b'\x55'
+            #test
+            vpw =struct.pack("H", 0)
+            mode = struct.pack("B", 4)
+            lrl = struct.pack("H", int(lrl_aai))
+            url = struct.pack("B", url_aai.get())
+            vamp = struct.pack("f", 0)
+            aamp = struct.pack("f", float(aa_aai))
+            apw = struct.pack("H", int(apw_aai))
+            vrp = struct.pack("H", 0)
+            arp = struct.pack("H", arp_aai.get())
+            atr_sens = struct.pack("f", float(as_aai))
+            vent_sens = struct.pack("f", 0)
+            pvarp = struct.pack("H", pvarp_aai.get())
+            rs = struct.pack("B", rs_aai.get())
+            hs = struct.pack("B", int(hysteresis_aai)) 
+            Signal_set = (Start + Fn_set + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs)
+
+            with serial.Serial(serial_port, 115200) as pacemaker:
+                pacemaker.write(Signal_set)
+                time.sleep(0.5)
+    
+    def echo_signal():
+        # serial_port = "COM10"
+
+        Start = b'\x16'
+        SYNC = b'\x22'
+        vpw =struct.pack("H", 0)
+        mode = struct.pack("B", 3)
+        lrl = struct.pack("H", int(lrl_aai))
+        url = struct.pack("B", url_aai.get())
+        vamp = struct.pack("f", 0)
+        aamp = struct.pack("f", float(aa_aai))
+        apw = struct.pack("H", int(apw_aai))
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", arp_aai.get())
+        atr_sens = struct.pack("f", float(as_aai))
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", pvarp_aai.get())
+        rs = struct.pack("B", rs_aai.get())
+        hs = struct.pack("B", int(hysteresis_aai)) 
+
+        Signal_echo = Start + SYNC + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs
+
+        with serial.Serial(serial_port, 115200) as pacemaker:
+            pacemaker.write(Signal_echo)
+            data = pacemaker.read(32)
+            time.sleep(0.5)
+            vpw_rev =  struct.unpack("H", data[0:2])[0]
+            lrl_rev = struct.unpack("H", data[2:4])[0]
+            mode_rev = data[4]
+            url_rev = data[5]
+            vamp_rev = struct.unpack("f", data[6:10])[0]
+            aamp_rev = struct.unpack("f", data[10:14])[0]
+            apw_rev = struct.unpack("H", data[14:16])[0]
+            vrp_rev =  struct.unpack("H", data[16:18])[0]
+            arp_rev =  struct.unpack("H", data[18:20])[0]
+            atrsens_rev =  struct.unpack("f", data[20:24])[0]
+            ventsens_rev =  struct.unpack("f", data[24:28])[0]
+            PVARP_rev =  struct.unpack("H", data[28:30])[0]
+            rs_rev =  data[30]
+            hs_rev =  data[31]
+
+            time.sleep(0.5)
+            print("From the board (AAI):")
+            print("MODE = ", mode_rev)
+            print("LOWER RATE LIMIT = ", lrl_rev)
+            print("UPPER RATE LIMIT = ",  url_rev)
+            print("ATRIAL PULSE WIDTH = ", apw_rev)
+            print("ATRIAL AMPLITUDE = ", aamp_rev)
+            print("ATRIAL SENSITIVITY:", atrsens_rev) 
+            print("ATRIAL REFRACTORY PERIOD:", arp_rev) 
+            print("POST VENTRICULAR ATRIAL REFRACTORY PERIOD:", PVARP_rev) 
+            print("HYSTERESIS:", hs_rev)
+            print("RATE SMOOTHING:", rs_rev)
+            serial.time.sleep(0.5)
+
+    Button(aai_screen, text = "Save", width="5", height = "1", command = show).place(x=190, y=385)
     Label(aai_screen, text = "").pack()
-    Button(aai_screen, text = "Load", width="5", height = "1", command = access_val).pack()
+    Button(aai_screen, text = "Load", width="5", height = "1", command = access_val).place(x=250, y=385)
     Label(aai_screen, text = "").pack()
-    Button(aai_screen, text = "Back", width="5", height = "1", command = destroy_aai).place(x=280, y=700)
-    Label(aai_screen, text = "Current User Logged In: %s" % (username_info_login)).pack(side=LEFT)
+    Button(aai_screen, text = "Back", width="5", height = "1", command = destroy_aai).place(x=310, y=385)
+    Label(aai_screen, text = "").pack()
+    Button(aai_screen, text = "Echo", width="5", height = "1", command = echo_signal).place(x=190, y=440)
+    Label(aai_screen, text = "").pack()
+    Button(aai_screen, text = "EGRAM", width="5", height = "1", command = egram_plot).place(x=250, y=440)
+    Label(aai_screen, text = "").pack()
+    Button(aai_screen, text = "STOP", width="5", height = "1", command = egram_stop).place(x=310, y=440)
+    Label(aai_screen, text = "").pack()
+    Label(aai_screen, text = "Current User Logged In: %s" % (username_info_login)).place(x=12, y=470)
+##############################################################################################################################################################################################
 ##############################################################################################################################################################################################
 def voor():
     modes_screen.destroy()
@@ -1932,5 +2291,115 @@ def access_val():
                     print("RESPONSE FACTOR:", AAIR_RF)
                     print("RECOVERY TIME:", AAIR_RECOVERY)
                     print("-------------------------------------------------------------------")
-                
+
+    
+def egram_plot():
+    egram_req = 1
+    # serial_port = "COM10"
+
+    Start = b'\x16'
+    Fn_set = b'\x47'
+    #test
+    
+    if(modeSet == 'VOO'):
+        vpw =struct.pack("H", int(vpw_voo))
+        mode = struct.pack("B", 1)
+        lrl = struct.pack("H", int(lrl_voo))
+        url = struct.pack("B", url_voo.get())
+        vamp = struct.pack("f", float(va_voo))
+        aamp = struct.pack("f", 0)
+        apw = struct.pack("H", 0)
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", 0)
+        hs = struct.pack("B", 0)
+    elif (modeSet == 'AOO'):
+        vpw =struct.pack("H", 0)
+        mode = struct.pack("B", 1)
+        lrl = struct.pack("H", int(lrl_aoo))
+        url = struct.pack("B", url_aoo.get())
+        vamp = struct.pack("f", 0)
+        aamp = struct.pack("f", float(aa_aoo))
+        apw = struct.pack("H", int(apw_aoo))
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", 0)
+        hs = struct.pack("B", 0)
+    elif (modeSet == 'AAI'):
+        vpw =struct.pack("H", 0)
+        mode = struct.pack("B", 4)
+        lrl = struct.pack("H", int(lrl_aai))
+        url = struct.pack("B", url_aai.get())
+        vamp = struct.pack("f", 0)
+        aamp = struct.pack("f", float(aa_aai))
+        apw = struct.pack("H", int(apw_aai))
+        vrp = struct.pack("H", 0)
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", 0)
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", 0)
+        hs = struct.pack("B", 0)
+    elif(modeSet=='VVI'):
+        vpw =struct.pack("H", int(vpw_vvi))
+        mode = struct.pack("B", 3)
+        lrl = struct.pack("H", int(lrl_vvi))
+        url = struct.pack("B", url_vvi.get())
+        vamp = struct.pack("f", float(va_vvi))
+        aamp = struct.pack("f", 0)
+        apw = struct.pack("H", 0)
+        vrp = struct.pack("H", vrp_vvi.get())
+        arp = struct.pack("H", 0)
+        atr_sens = struct.pack("f", 0)
+        vent_sens = struct.pack("f", float(vs_vvi))
+        pvarp = struct.pack("H", 0)
+        rs = struct.pack("B", rs_vvi.get())
+        hs = struct.pack("B", int(hysteresis_vvi))
+    Signal_set = (Start + Fn_set + vpw + lrl + mode + url + vamp + aamp + apw + vrp + arp + atr_sens + vent_sens + pvarp + rs + hs)
+    xs = []
+    ys = []
+    j=0
+    
+    with serial.Serial(serial_port, 115200) as pacemaker:
+        pacemaker.write(Signal_set)
+        time.sleep(0.5)
+    print("SENDING REQUEST")
+        
+    style.use('fivethirtyeight')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1,1,1)
+    ani = animation.FuncAnimation(fig, animate, fargs=(xs, ys, j, ax1), interval=1000)
+    HTML(ani.to_html5_video())
+    plt.show()
+
+def egram_stop():
+    egram_req = 0
+    print("STOPPING EGRAM STREAM")
+    plt.close()
+    
+def animate(i,xs,ys,j, ax1):
+    print("ANIMATE")
+    serial_port= "COM10"
+    with serial.Serial(serial_port,115200) as pacemaker:
+        data = pacemaker.read(9)
+        egram_data =  struct.unpack("d", data[0:8])[0]
+    print("EGRAM_DATA: ", egram_data)
+    j=j+1
+    xs.append(j)
+    ys.append(egram_data)
+    xs[-20:]
+    ys[-20:]
+    ax1.clear()
+    ax1.plot(ys,xs)
+        
+        
+        
+    
+        
 main_screen()
